@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <math.h>
+#include <random>
 
 #include<windows.h>
 #include<process.h>
@@ -19,7 +20,7 @@ class Point
     float x;
     float y;
 public:
-    Point(float,float);
+    Point(const float&,const float&);
     float X();
     float Y();
 };
@@ -29,10 +30,10 @@ class PointConnection
     uint32_t BeginPoint;
     uint32_t EndPoint;
 public:
-    PointConnection(uint32_t,uint32_t);
-    void Set(uint32_t,uint32_t);
-    void SetBegin(uint32_t);
-    void SetEnd(uint32_t);
+    PointConnection(const uint32_t&,const uint32_t&);
+    void Set(const uint32_t&,const uint32_t&);
+    void SetBegin(const uint32_t&);
+    void SetEnd(const uint32_t&);
     uint32_t GetBegin();
     uint32_t GetEnd();
 };
@@ -53,6 +54,8 @@ class GeneticAlgorithm
     uint32_t Generations;
     bool printbestpath;
     bool exit;
+    std::random_device seed;
+    std::mt19937 generator;
 public:
     GeneticAlgorithm();
     std::list <Path> GetPaths();
@@ -67,7 +70,7 @@ private:
 
     void GenerateRandomPaths();
     void PrintPathes();
-    void PrintBestPath(uint32_t);
+    void PrintBestPath(const uint32_t&);
 
     void CountPathCosts();
     float CountDistance(Point,Point);

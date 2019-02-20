@@ -3,12 +3,11 @@
 
 int main()
 {
-    srand(time(NULL));
     GeneticAlgorithm aaa;
     return 0;
 }
 
-Point::Point(float X,float Y):x(X),y(Y)
+Point::Point(const float & X,const float & Y):x(X),y(Y)
 {}
 
 float Point::X()
@@ -20,21 +19,21 @@ float Point::Y()
     return y;
 }
 
-PointConnection::PointConnection(uint32_t first,uint32_t last)
+PointConnection::PointConnection(const uint32_t & first,const uint32_t & last)
 :BeginPoint(first),EndPoint(last){}
 
-void PointConnection::Set(uint32_t first,uint32_t last)
+void PointConnection::Set(const uint32_t & first,const uint32_t & last)
 {
     SetBegin(first);
     SetEnd(last);
 }
 
-void PointConnection::SetBegin(uint32_t first)
+void PointConnection::SetBegin(const uint32_t & first)
 {
     BeginPoint = first;
 }
 
-void PointConnection::SetEnd(uint32_t last)
+void PointConnection::SetEnd(const uint32_t & last)
 {
     EndPoint = last;
 }
@@ -48,7 +47,7 @@ uint32_t PointConnection::GetEnd()
 }
 
 GeneticAlgorithm::GeneticAlgorithm()
-:exit(false)
+:exit(false),seed(),generator(seed())
 {
     while(!exit)
     {
@@ -104,8 +103,7 @@ void GeneticAlgorithm::GetPoints()
         PrintStringAndLine("Enter "+std::to_string(i+1)+" point coordinates:");
         x = GetFloatFromInput("x: ");
         y = GetFloatFromInput("y: ");
-        Point p(x,y);
-        Points.push_back(p);
+        Points.emplace_back(x,y);
     }
 }
 
@@ -180,16 +178,17 @@ void GeneticAlgorithm::GenerateRandomPaths()
         std::vector<uint32_t> PointOrderCopy = PointOrder;
         for(uint32_t j = 0;j<PointCount;j++)
         {
-            uint32_t random = rand()%(PointCount-j);
+            std::uniform_int_distribution<uint32_t> distribution(0,PointCount-j-1);
+            uint32_t random = distribution(generator);
             uint32_t number = PointOrderCopy[random];
             if(j>0)
             {
-                p.paths.push_back(PointConnection(previous,number));
+                p.paths.emplace_back(previous,number);
             }
             previous = number;
             PointOrderCopy.erase(PointOrderCopy.begin()+random);
         }
-        Paths.push_back(p);
+        Paths.push_back(std::move(p));
     }
 }
 
@@ -210,7 +209,7 @@ void GeneticAlgorithm::PrintPathes()
 
 }
 
-void GeneticAlgorithm::PrintBestPath(uint32_t generation)
+void GeneticAlgorithm::PrintBestPath(const uint32_t & generation)
 {
     std::list<Path>::iterator ite = Paths.begin();
     PrintString("Best path of "+std::to_string(generation)+" generation: ");
@@ -261,21 +260,20 @@ void GeneticAlgorithm::NextGeneration()
 
     for(std::list<Path>::iterator ite = NewPaths.begin();ite!=NewPaths.end();ite++)
     {
-        Paths.push_back((*ite));
+        Paths.push_back(std::move(*ite));
     }
 }
 
 void GeneticAlgorithm::Mutate(Path path)
 {
-    uint32_t FirstNumber = rand()%PointCount;
+    std::uniform_int_distribution<uint32_t> distribution(0,PointCount-1);
+    uint32_t FirstNumber = distribution(generator);;
     uint32_t SecondNumber;
     do{
-        SecondNumber = rand()%PointCount;
+        SecondNumber = distribution(generator);;
     }while(SecondNumber==FirstNumber);
 
-    Path p = path;
-
-    for(std::list <PointConnection>::iterator ite = p.paths.begin();ite!=p.paths.end();ite++)
+    for(std::list <PointConnection>::iterator ite = path.paths.begin();ite!=path.paths.end();ite++)
     {
         uint32_t Pbegin = (*ite).GetBegin(), Pend = (*ite).GetEnd();
         if(Pbegin==FirstNumber)
@@ -288,7 +286,7 @@ void GeneticAlgorithm::Mutate(Path path)
             (*ite).SetEnd(FirstNumber);
     }
 
-    NewPaths.push_back(p);
+    NewPaths.push_back(path);
 }
 
 void GeneticAlgorithm::SelectForCrossing()
@@ -301,7 +299,8 @@ void GeneticAlgorithm::SelectForCrossing()
     {
         if(NewSize>0)
         {
-            if(rand()%2==0)
+            std::uniform_int_distribution<uint32_t> distribution(0,1);
+            if(distribution(generator)==0)
                 ToCross.push_back((*ite));
             else
                 ToCross.push_front((*ite));
@@ -316,7 +315,8 @@ void GeneticAlgorithm::SelectForCrossing()
 
 void GeneticAlgorithm::GeneCrossing(Path p1,Path p2)
 {
-    uint32_t Random = rand()%PointCount;
+    std::uniform_int_distribution<uint32_t> distribution(0,PointCount-1);
+    uint32_t Random = distribution(generator);
     uint32_t right = Random, left = Random;
     uint32_t lastpoint = (*(p1.paths.rbegin())).GetEnd();
     for(std::list <PointConnection>::iterator ite = p1.paths.begin();ite!=p1.paths.end();)
@@ -365,10 +365,9 @@ void GeneticAlgorithm::GeneCrossing(Path p1,Path p2)
             }while(repeated&&ite1!=p1.paths.end());
             if(!repeated)
             {
-                PointConnection pc(right,(*ite1).GetEnd());
-                child.paths.push_back(pc);
+                child.paths.emplace_back(right,(*ite1).GetEnd());
                 right = (*ite1).GetEnd();
-                Repeated.push_back(right);
+                Repeated.emplace_back(right);
             }
         }
         if(ite2!=p2.paths.rend())
@@ -386,10 +385,9 @@ void GeneticAlgorithm::GeneCrossing(Path p1,Path p2)
             }while(repeated&&ite2!=p2.paths.rend());
             if(!repeated)
             {
-                PointConnection pc((*ite2).GetBegin(),left);
-                child.paths.push_front(pc);
+                child.paths.emplace_front((*ite2).GetBegin(),left);
                 left = (*ite2).GetBegin();
-                Repeated.push_back(left);
+                Repeated.emplace_back(left);
             }
         }
     }while(ite1!=p1.paths.end()||ite2!=p2.paths.rend());
